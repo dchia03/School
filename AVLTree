@@ -1,0 +1,740 @@
+import java.util.*;
+
+// AVL Tree's are more efficient than Binary Search Trees because of the balancing algorithm after insertion/deletion
+// The balancing allows for the tree to maintain a "minimum" height such that operations like insert/delete/search/etc
+// can be done in O(h) time of O(log n)
+
+public class AVLTree {
+	private Node<Integer> root;
+	
+	public AVLTree(){
+		root = null;
+	}
+	
+	// find height of node
+	private int findHeight(Node<Integer> node){
+		if(node == null){
+			return -1;
+		}
+		else if(hasNoChild(node)){
+			return 0;
+		}
+		else if(hasOneChild(node)){
+			return hasLeftChild(node) ? node.getLeft().getHeight() + 1 : node.getRight().getHeight() + 1;
+		}
+		else{
+			return Math.max(node.getLeft().getHeight(), node.getRight().getHeight()) + 1;
+		}
+	}
+	
+	// update the heights of the current node and go up the tree until null
+	private void updateHeights(Node<Integer> node){
+		if(node != null){
+			node.setHeight(Math.max(findHeight(node.getLeft()), findHeight(node.getRight())) + 1);
+			updateHeights(node.getParent());
+		}
+	}
+	
+	// find balance factor for rotation
+	// for insertion, amount of corrections is 1
+	// for deletion, amount of corrections can be >= 1
+	// Node must not be null
+	private int bf(Node<Integer> node){
+		return (node == null) ? 0 : findHeight(node.getLeft()) - findHeight(node.getRight());
+	}
+	
+	// using the balance factor we can balance the node(which can be a subset of the entire tree or the tree itself
+	// node nvr equal to null
+	
+	private void balanceNode(Node<Integer> node){
+		// check for left left case --> do rotate right at node
+		if((bf(node) == 2) && (bf(node.getLeft()) >= 0) && (bf(node.getLeft()) <= 1)){
+			System.out.println("LEFT LEFT CASE");
+			rotateRight(node);
+		}
+		// check for left right case --> do rotate right at node
+		else if((bf(node) == 2) && (bf(node.getLeft()) == -1)){
+			System.out.println("LEFT RIGHT CASE");
+			rotateLeft(node.getLeft());
+			rotateRight(node);
+		}
+		// check for right right case --> do rotate right at node
+		else if((bf(node) == -2) && (bf(node.getRight()) <= 0) && (bf(node.getRight()) >= -1)){
+			System.out.println("RIGHT RIGHT CASE");
+			rotateLeft(node);
+		}
+		// check for right left case --> do rotate right at node
+		else if((bf(node) == -2) && (bf(node.getRight()) == 1)){
+			System.out.println("RIGHT LEFT CASE");
+			rotateRight(node.getRight());
+			rotateLeft(node);
+		}
+		else{
+			/*System.out.println("ALREADY BALANCED: " + node);
+			System.out.println("node.getLeft(): " + node.getLeft());
+			System.out.println("node.getRight(): " + node.getRight());
+			System.out.println("BF of node: " + bf(node));
+			System.out.println("BF of node.getLeft(): " + bf(node.getLeft()));
+			System.out.println("BF of node.getRight(): " + bf(node.getRight()));
+			*/
+		}
+	}
+	
+	// check if tree is balanced from node
+	// node may have been deleted or added into tree
+	// checks if the tree needs to be balance from the node to the upper most parent
+	private void balanceTree(Node<Integer> node){
+		Node<Integer> curr = node;
+		while(curr != null){
+			balanceNode(curr);
+			curr = curr.getParent();
+		}
+		// tree should be balanced by here
+	}
+	
+	// old top must have right child
+	private void rotateLeft(Node<Integer> oldTop){
+		// rotates from left to right
+		// node is at the top now
+		// newTop will be the new top most node
+		Node<Integer> newTop = oldTop.getRight();
+		Node<Integer> oldPar = oldTop.getParent();
+		Node<Integer> newRight = newTop.getLeft();
+		
+		// set the newTop's parents to the oldTop's parents
+		newTop.setParent(oldPar);
+		if(oldPar != null){
+			if(isLeftChild(oldTop)){
+				oldPar.setLeft(newTop);
+			}
+			else{
+				oldPar.setRight(newTop);
+			}
+		}
+		else{
+			root = newTop;
+		}
+		
+		oldTop.setRight(newRight);
+		if(newRight != null)
+			newRight.setParent(oldTop);
+		
+		newTop.setLeft(oldTop);
+		oldTop.setParent(newTop);
+		updateHS(oldTop);
+	}
+	
+	// oldTop must have a leftchild
+	private void rotateRight(Node<Integer> oldTop){
+		// rotates from left to right
+		// node is at the top now
+		// newTop will be the new top most node
+		
+		Node<Integer> newTop = oldTop.getLeft();
+		Node<Integer> oldPar = oldTop.getParent();
+		Node<Integer> newLeft = newTop.getRight();
+		// set the newTop's parents to the oldTop's parents
+		newTop.setParent(oldPar);
+		if(oldPar != null){
+			if(isLeftChild(oldTop)){
+				oldPar.setLeft(newTop);
+			}
+			else{
+				oldPar.setRight(newTop);
+			}
+		}
+		else{
+			root = newTop;
+		}
+		
+		oldTop.setLeft(newLeft);
+		if(newLeft != null)
+			newLeft.setParent(oldTop);
+		
+		newTop.setRight(oldTop);
+		oldTop.setParent(newTop);
+		updateHS(oldTop);
+	}
+	
+	// find size of node
+	private int findSize(Node<Integer> node){
+		if(node != null){
+			if(hasBothChild(node)){
+				return node.getRight().getSize() + node.getLeft().getSize() + 1;
+			}
+			else if(hasLeftChild(node)){
+				return node.getLeft().getSize() + 1;
+			}
+			else if(hasRightChild(node)){
+				return node.getRight().getSize() + 1;
+			}
+			else{
+				return 1;
+			}
+		}
+		return 0;
+	}
+	
+	// update size of nodes from node until parent
+	private void updateSizes(Node<Integer> node){
+		if(node != null){
+			node.setSize(findSize(node.getLeft()) + findSize(node.getRight()) + 1);
+			updateSizes(node.getParent());
+		}
+	}
+	
+	private void updateHS(Node<Integer> node){
+		updateHeights(node);
+		updateSizes(node);
+	}
+	
+	// fins the node within the range
+	// start is inclusive and end is exclusive
+	// returns a node that is: start <= node < end
+	private Node<Integer> findNodeInRange(Node<Integer> node, int start, int end){
+		if(node == null){
+			return node;
+		}
+		else if(node.getItem() >= end){
+			return findNodeInRange(node.getLeft(), start, end);
+		}
+		else if(node.getItem() < start){
+			return findNodeInRange(node.getRight(), start, end);
+		}
+		else{
+			return node;
+		}
+	}
+	
+	// returns the node that is the nearest to the start
+	// node at first should be >= start
+	// returns a node with node.getItem() >= start
+	private int numNodesFromStart(Node<Integer> node, int start){
+		int numNodes = 0;
+		Node<Integer> curr = node;
+		while(curr != null){
+			if(curr.getItem() >= start){
+				numNodes += 1 + findSize(curr.getRight());
+				curr = curr.getLeft();
+			}
+			// curr.getItem() < start
+			// look at curr.getRight();
+			else if(hasRightChild(curr)){
+				curr = curr.getRight();
+			}
+			else{
+				System.out.println("CHECKING IN FROM START");
+				System.out.println(curr);
+				break;
+			}
+		}
+		return numNodes;
+	}
+	
+	private int numNodesbeforeEnd(Node<Integer> node, int end){
+		int numNodes = 0;
+		Node<Integer> curr = node;
+		while(curr != null){
+			if(curr.getItem() < end){
+				numNodes += 1 + findSize(curr.getLeft());
+				curr = curr.getRight();
+			}
+			else if(curr.getItem() == end && hasLeftChild(curr)){
+				// found end and able to quit after getting size
+				// do not incre for curr as end is non-inclusive
+				numNodes += curr.getLeft().getSize();
+				break;
+			}
+			else if(hasLeftChild(curr)){
+				curr = curr.getLeft();
+			}
+			else{
+				System.out.println("CHECKING IN BEFORE END");
+				System.out.println(curr);
+				break;
+			}
+		}
+		return numNodes;
+	}
+	
+	// finds number of nodes in given range
+	// start inclusive and end exclusive
+	public int numNodesInRange(int start, int end){
+		Node<Integer> node = findNodeInRange(root, start, end);	
+		System.out.println(node + " is in between : " + start + " and " + end);
+		return node == null ? 0 : 1 + numNodesFromStart(node.getLeft(), start) + numNodesbeforeEnd(node.getRight(), end);
+	}
+	
+	// overide add
+	public void add(int value){
+		add(new Node<Integer>(value), root);
+	}
+	
+	public void add(Node<Integer> value, Node<Integer> node){
+		// add at root
+		if(node == null){
+			root = value;
+		}
+		// has left child and value is smaller than node
+		else if((value.getItem() < node.getItem()) && (hasLeftChild(node))){
+			add(value, node.getLeft());
+		}
+		// has right child and value is bigger than node
+		else if((value.getItem() > node.getItem()) && (hasRightChild(node))){
+			add(value, node.getRight());
+		}
+		else{
+			if(value.getItem() < node.getItem())
+				node.setLeft(value);
+			else
+				node.setRight(value);
+			
+			value.setParent(node);
+			// update heights here
+			updateHS(value);
+			balanceTree(value);
+		}
+	}
+	
+	// remove value if valid
+	public boolean remove(int value){
+		return remove(value, root);
+	}
+	
+	public boolean remove(int value, Node<Integer> curr){
+		// value not in tree
+		if(curr == null){
+			return false;
+		}
+		else if(value == curr.getItem()){
+			// curr has no children
+			if(hasNoChild(curr)){
+				deleteLeaf(curr);
+			}
+			// curr has at least 1 child
+			else if(hasOneChild(curr)){
+				// bypass
+				deleteOnlyChild(curr);
+			}
+			// curr has both child
+			else{
+				//delete
+				deleteBothChild(curr);
+			}
+		}
+		else if(value < curr.getItem()){
+			remove(value, curr.getLeft());
+		}
+		else if(value > curr.getItem()){
+			remove(value, curr.getRight());
+		}
+		return true;
+	}
+	
+	// delete node that is a leaf
+	private void deleteLeaf(Node<Integer> node){
+		if(node == null){
+			System.out.println("Node is null");
+		}
+		else{
+			Node<Integer> par = node.getParent();
+			if(par == null){
+				// node must be the root as it has no parents
+				root = null;
+			}
+			else if(isLeftChild(node)){
+				par.setLeft(null);
+			}
+			else if(isRightChild(node)){
+				par.setRight(null);
+			}
+			else{
+				// unknown condition
+				System.out.println("unknown erorr" + node);
+			}
+			updateHS(par);
+			balanceTree(par);
+		}	
+	}
+	
+	// delete node that have 1 child
+	// pre con: it is assured that node has at least 1 child 
+	// either left or right child
+	private void deleteOnlyChild(Node<Integer> node){
+		Node<Integer> parent = node.getParent();
+		Node<Integer> child = null;
+		
+		// check if node is the left child to its parent
+		if(node.getParent() != null){
+			// check which child does the node have
+			if(hasLeftChild(node))
+				child = node.getLeft();
+			// node has right child
+			else
+				child = node.getRight();
+			
+			child.setParent(parent);
+			
+			if(isLeftChild(node))
+				parent.setLeft(child);
+			else
+				parent.setRight(child);
+			
+			updateHS(parent);
+			balanceTree(child);		
+		}
+
+		// no parents
+		else{
+			// its the root
+			// node has left child
+			if(hasLeftChild(node))
+				root = node.getLeft();
+			
+			// node has right child
+			else
+				root = node.getRight();
+
+			root.setParent(null);
+		}
+	}
+	
+	// delete node that has 2 children
+	private void deleteBothChild(Node<Integer> node){
+		// find successor
+		Node<Integer> suc = getSuccessor(node);
+		Node<Integer> sucPar = suc.getParent();
+		Node<Integer> sucRight = suc.getRight();
+		
+		if(isRightChild(suc)){
+			sucPar.setRight(sucRight);
+		}
+		else{
+			sucPar.setLeft(sucRight);
+		}
+		
+		if(sucRight != null){sucRight.setParent(sucPar);}
+		
+		updateHS(sucPar);
+		
+		Node<Integer> rmPar = node.getParent();
+		Node<Integer> rmLeft = node.getLeft();
+		Node<Integer> rmRight = node.getRight();
+		
+		suc.setParent(rmPar);
+		suc.setLeft(rmLeft);
+		suc.setRight(rmRight);
+		
+		if(isLeftChild(node)){
+			rmPar.setLeft(suc);
+		}
+		else if(isRightChild(node)){
+			rmPar.setRight(suc);
+		}
+		else{
+			root = suc;
+		}
+		
+		if(rmLeft != null){rmLeft.setParent(suc);}
+		if(rmRight != null){rmRight.setParent(suc);}
+		
+		updateHS(suc);
+		balanceTree(suc);
+	}
+
+	// search for value
+	public Node<Integer> search(int value){
+		Node<Integer> curr = root;
+		
+		while(curr != null){
+			if(value < curr.getItem()){
+				// value smaller than curr
+				curr = curr.getLeft();
+			}
+			else if(value > curr.getItem()){
+				// value bigger than curr
+				curr = curr.getRight();
+			}
+			else if(value == curr.getItem()){
+				// found
+				break;
+			}
+		}
+		if(curr == null)
+			System.out.println("node not found!");
+		return curr;
+		
+	}
+	
+	// find successor of value
+	// successor is the first number after value
+	public Node<Integer> getSuccessor(Node<Integer> node){
+		
+		if(hasRightChild(node)){
+			return findMin(node.getRight());
+		}
+		else{
+			Node<Integer> parent = node.getParent();
+			Node<Integer> curr = node;
+			while(parent != null && isRightChild(curr)){
+				curr = parent;
+				parent = curr.getParent();
+			}
+			return parent;
+		}
+	}
+	
+	// find predecessor of value
+	// predecessor is the first previous number before value
+	public Node<Integer> getPredecessor(Node<Integer> node){
+		
+		if(hasLeftChild(node)){
+			return findMax(node.getLeft());
+		}
+		else{
+			Node<Integer> parent = node.getParent();
+			Node<Integer> curr = node;
+			while(parent != null && isLeftChild(curr)){
+				curr = parent;
+				parent = curr.getParent();
+			}
+			return parent;
+		}
+	}
+
+	public Node<Integer> findMax(Node<Integer> node){
+		Node<Integer> curr = node;
+		while(hasRightChild(curr)){
+			curr = curr.getRight();
+		}
+		return curr;
+	}
+	
+	public Node<Integer> findMin(Node<Integer> node){
+		Node<Integer> curr = node;
+		while(hasLeftChild(curr)){
+			curr = curr.getLeft();
+		}
+		return curr;
+	}
+	
+	// checks if node is a right child of parent
+	private boolean isRightChild(Node<Integer> node){
+		if(node.getParent() == null){
+			return false;
+		}
+		else if(node == node.getParent().getRight()){
+			return true;
+		}
+		else
+			return false;
+	}
+	
+	// checks if node is a left child of parent
+	private boolean isLeftChild(Node<Integer> node){
+		if(node.getParent() == null){
+			return false;
+		}
+		else if(node == node.getParent().getLeft()){
+			return true;
+		}
+		else
+			return false;
+	}
+	
+	// checks if node has left child
+	private boolean hasLeftChild(Node<Integer> node){
+		return node.getLeft() != null;
+	}
+	
+	// checks if node has right child
+	private boolean hasRightChild(Node<Integer> node){
+		return node.getRight() != null;
+	}
+	
+	// has both children
+	private boolean hasBothChild(Node<Integer> node){
+		return hasLeftChild(node) && hasRightChild(node);
+	}
+	
+	// has only 1 child
+	private boolean hasOneChild(Node<Integer> node){
+		return (hasLeftChild(node)&&!hasRightChild(node)) || (!hasLeftChild(node)&&hasRightChild(node));
+	}
+	
+	// has no children
+	private boolean hasNoChild(Node<Integer> node){
+		return (!hasLeftChild(node)) && (!hasRightChild(node));
+	}
+	
+	public Node<Integer> getRoot(){
+		return root;
+	}
+	
+	public int getSize(){
+		return root.getSize();
+	}
+	
+	public int getHeight(){
+		return root.getHeight();
+	}
+	
+	// Traversals
+	public void postOrderTra(Node<Integer> node){
+		if(node != null){
+			postOrderTra(node.getLeft());
+			postOrderTra(node.getRight());
+			System.out.print(node);
+		}
+	}
+	
+	public void preOrderTra(Node<Integer> node){
+		if(node != null){
+			System.out.print(node);
+			preOrderTra(node.getLeft());
+			preOrderTra(node.getRight());
+		}
+	}
+	
+	public void inOrderTra(Node<Integer> node){
+		if(node != null){
+			inOrderTra(node.getLeft());
+			System.out.print(node);
+			inOrderTra(node.getRight());
+		}
+	}
+
+	public String levelOrderTra(Node<Integer> node){
+		Queue<Node<Integer>> q = new LinkedList<Node<Integer>>();
+		q.offer(node);
+		String lOTWord = "";
+		
+		if(node == null){
+			return lOTWord;
+		}
+		
+		while(!q.isEmpty()){
+			Node<Integer> temp = q.poll();
+			lOTWord += temp.getItem() + " ";
+			//System.out.print(temp.getItem());
+			if(temp.getLeft()!= null){
+				q.offer(temp.getLeft());
+			}
+			if(temp.getRight()!= null){
+				q.offer(temp.getRight());
+			}
+		}
+		
+		return lOTWord;
+	}
+
+	public static void main(String[] args){
+		AVLTree avl = new AVLTree();
+		
+		Scanner sc = new Scanner(System.in);
+		Random rand = new Random();
+		boolean[] nums = new boolean[51];
+		
+		int num = 10;
+		
+		for(int i=0; i<num; i++){
+			System.out.println("Adding");
+			boolean added = false;
+			while(added == false){
+				int value = rand.nextInt(50) + 1;
+				if(nums[value] == false){
+					avl.add(value);
+					nums[value] = true;
+					added = true;
+				}
+			}
+		}
+		System.out.println("Printing tree");
+		System.out.print("per-order: ");
+		avl.preOrderTra(avl.getRoot());
+		System.out.println();
+		System.out.print("in-order: ");
+		avl.inOrderTra(avl.getRoot());
+		System.out.println();
+		System.out.println("End tree");
+			
+		for(int i=0; i<num; i++){
+			System.out.println("find nodes in range: ");
+			int start = sc.nextInt();
+			int end = sc.nextInt();
+		
+			System.out.println(avl.numNodesInRange(start, end));
+			System.out.println("Printing tree");
+			System.out.print("per-order: ");
+			avl.preOrderTra(avl.getRoot());
+			System.out.println();
+			System.out.print("in-order: ");
+			avl.inOrderTra(avl.getRoot());
+			System.out.println();
+			System.out.println("End tree");
+		}
+	}
+}
+
+class Node<E>{
+	private E item;
+	private Node<E> left;
+	private Node<E> right;
+	private Node<E> parent;
+	private int height;
+	private int size;
+	
+	public Node(E item, Node<E> left, Node<E> right){
+		setItem(item);
+		setLeft(left);
+		setRight(right);
+		height = 0;
+		size = 1;
+	}
+	
+	public Node(E item){
+		this(item, null, null);
+	}
+	
+	public void setItem(E item){
+		this.item = item;
+	}
+	public void setLeft(Node<E> node){
+		this.left = node;
+	}
+	public void setRight(Node<E> node){
+		this.right = node;
+	}
+	public void setParent(Node<E> node){
+		this.parent = node;
+	}
+	public void setHeight(int height){
+		this.height = height;
+	}
+	public void setSize(int size){
+		this.size = size;
+	}
+	
+	public E getItem(){
+		return this.item;
+	}
+	public Node<E> getLeft(){
+		return this.left;
+	}
+	public Node<E> getRight(){
+		return this.right;
+	}
+	public Node<E> getParent(){
+		return this.parent;
+	}
+	public int getHeight(){
+		return height;
+	}
+	public int getSize(){
+		return size;
+	}
+	
+	public String toString(){
+		return "[" + item + ", " + height + ", " + size + "]";
+	}
+}
